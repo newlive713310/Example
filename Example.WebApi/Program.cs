@@ -1,3 +1,5 @@
+using Example.Application.Interfaces;
+using Example.Application.Services;
 using Example.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +15,11 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddHealthChecks();
+
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ICategoryAdditionalFieldService, CategoryAdditionalFieldService>();
+builder.Services.AddScoped<IProductAdditionalFieldService, ProductAdditionalFieldService>();
 
 builder.Services.AddEntityFrameworkNpgsql().AddDbContext<ApplicationContext>(opt =>
         opt.UseNpgsql(builder.Configuration.GetConnectionString("ExampleDb")));

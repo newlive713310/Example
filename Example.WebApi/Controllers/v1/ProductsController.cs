@@ -1,7 +1,6 @@
-﻿using Example.Domain.Models;
+﻿using Example.Application.Interfaces;
 using Example.Domain.Models.Entities;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Example.WebApi.Controllers.v1
 {
@@ -10,11 +9,37 @@ namespace Example.WebApi.Controllers.v1
     [ApiController]
     public class ProductsController : ControllerBase
     {
-        private readonly ApplicationContext _context;
+        private readonly IProductService _productService;
+        private readonly ILogger<ProductsController> _logger;
 
-        public ProductsController(ApplicationContext context)
+        public ProductsController(
+            IProductService productService,
+            ILogger<ProductsController> logger
+            )
         {
-            _context = context;
+            _productService = productService;
+            _logger = logger;
+        }
+        /// <summary>
+        /// Get a list of products
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet]
+        public async Task<IActionResult> Get()
+        {
+            try
+            {
+                var response = await _productService.Get();
+
+                return Ok(await Task.FromResult(response));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"Error occured in {nameof(Get)}. Message: {ex.Message}");
+
+                return BadRequest(ex.Message);
+            }
+            finally { }
         }
         /// <summary>
         /// Get a product by Id
@@ -22,32 +47,26 @@ namespace Example.WebApi.Controllers.v1
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id}")]
-        public async Task<ActionResult<Product>> Get(int id)
+        public async Task<ActionResult<Product>> GetById(int id)
         {
-            var product = await _context.Products
-                .Include(p => p.ProductAdditionalFields)
-                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (product == null)
+            try
             {
-                return NotFound();
+                var response = await _productService.GetById(id);
+
+                if (response == null)
+                    return NotFound();
+
+                return Ok(await Task.FromResult(response));
             }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"Error occured in {nameof(Get)}. Message: {ex.Message}");
 
-            return Ok(product);
+                return BadRequest(ex.Message);
+            }
+            finally { }
         }
-        /// <summary>
-        /// Get a list of products
-        /// </summary>
-        /// <returns></returns>
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Product>>> Get()
-        {
-            var productsWithAdditionalFields = await _context.Products
-                .Include(p => p.ProductAdditionalFields)
-                .ToListAsync();
-
-            return Ok(productsWithAdditionalFields);
-        }
+        
         /// <summary>
         /// Create a product
         /// </summary>
@@ -56,10 +75,19 @@ namespace Example.WebApi.Controllers.v1
         [HttpPost]
         public async Task<ActionResult<Product>> Post(Product product)
         {
-            _context.Products.Add(product);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _productService.Post(product);
 
-            return StatusCode(201, product);
+                return StatusCode(204);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"Error occured in {nameof(Post)}. Message: {ex.Message}");
+
+                return BadRequest(ex.Message);
+            }
+            finally { }
         }
         /// <summary>
         /// Delete a product by its Id
@@ -69,17 +97,22 @@ namespace Example.WebApi.Controllers.v1
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
-
-            if (product == null)
+            try
             {
-                return NotFound();
+                var response = await _productService.Delete(id);
+
+                if (response == null)
+                    return NotFound();
+
+                return NoContent();
             }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"Error occured in {nameof(Get)}. Message: {ex.Message}");
 
-            _context.Products.Remove(product);
-            _context.SaveChanges();
-
-            return NoContent();
+                return BadRequest(ex.Message);
+            }
+            finally { }
         }
     }
 }

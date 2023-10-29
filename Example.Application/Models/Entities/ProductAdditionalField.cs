@@ -1,6 +1,4 @@
-﻿using Example.Domain.Models.Entities;
-
-namespace Example.Application.Models.Entities
+﻿namespace Example.Application.Models.Entities
 {
     public class ProductAdditionalField
     {

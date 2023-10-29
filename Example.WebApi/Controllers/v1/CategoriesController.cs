@@ -1,8 +1,6 @@
-﻿using Example.Application.Models.Entities;
-using Example.Domain.Models;
+﻿using Example.Application.Interfaces;
 using Example.Domain.Models.Entities;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Example.WebApi.Controllers.v1
 {
@@ -11,28 +9,16 @@ namespace Example.WebApi.Controllers.v1
     [ApiController]
     public class CategoriesController : ControllerBase
     {
-        private readonly ApplicationContext _context;
+        private readonly ICategoryService _categoryService;
+        private readonly ILogger<CategoriesController> _logger;
 
-        public CategoriesController(ApplicationContext context)
+        public CategoriesController(
+            ICategoryService categoryService,
+            ILogger<CategoriesController> logger
+            )
         {
-            _context = context;
-        }
-        /// <summary>
-        /// Get a category by Id
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Category>> Get(int id)
-        {
-            var category = await _context.Categories.FindAsync(id);
-
-            if (category == null)
-            {
-                return NotFound();
-            }
-
-            return category;
+            _categoryService = categoryService;
+            _logger = logger;
         }
         /// <summary>
         /// Get a list of categories
@@ -41,7 +27,44 @@ namespace Example.WebApi.Controllers.v1
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Category>>> Get()
         {
-            return await _context.Categories.ToListAsync();
+            try
+            {
+                var response = await _categoryService.Get();
+
+                return Ok(await Task.FromResult(response));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"Error occured in {nameof(Get)}. Message: {ex.Message}");
+
+                return BadRequest(ex.Message);
+            }
+            finally { }
+        }
+        /// <summary>
+        /// Get a category by Id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Category>> GetById(int id)
+        {
+            try
+            {
+                var response = await _categoryService.GetById(id);
+
+                if (response == null)
+                    return NotFound();
+
+                return Ok(await Task.FromResult(response));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"Error occured in {nameof(Get)}. Message: {ex.Message}");
+
+                return BadRequest(ex.Message);
+            }
+            finally { }
         }
         /// <summary>
         /// Post a category
@@ -51,11 +74,19 @@ namespace Example.WebApi.Controllers.v1
         [HttpPost]
         public async Task<ActionResult<Product>> Post(Category category)
         {
-            _context.Categories.Add(category);
+            try
+            {
+                await _categoryService.Post(category);
 
-            await _context.SaveChangesAsync();
+                return StatusCode(204);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"Error occured in {nameof(Post)}. Message: {ex.Message}");
 
-            return StatusCode(201, category);
+                return BadRequest(ex.Message);
+            }
+            finally { }
         }
         /// <summary>
         /// Delete a category by Id
@@ -65,21 +96,22 @@ namespace Example.WebApi.Controllers.v1
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id);
-
-            if (category == null)
+            try
             {
-                return NotFound();
+                var response = await _categoryService.Delete(id);
+
+                if (response == null)
+                    return NotFound();
+
+                return NoContent();
             }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"Error occured in {nameof(Get)}. Message: {ex.Message}");
 
-            var additionalFields = _context.CategoryAdditionalFields.Where(f => f.CategoryId == id);
-            _context.CategoryAdditionalFields.RemoveRange(additionalFields);
-
-            _context.Categories.Remove(category);
-
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+                return BadRequest(ex.Message);
+            }
+            finally { }
         }
     }
 }

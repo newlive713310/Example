@@ -1,7 +1,6 @@
-﻿using Example.Application.Models.Entities;
-using Example.Domain.Models;
+﻿using Example.Application.Interfaces;
+using Example.Application.Models.Entities;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Example.WebApi.Controllers.v1
 {
@@ -10,11 +9,16 @@ namespace Example.WebApi.Controllers.v1
     [ApiController]
     public class ProductAdditionalFieldsController : ControllerBase
     {
-        private readonly ApplicationContext _context;
+        private readonly IProductAdditionalFieldService _productAdditionalFieldService;
+        private readonly ILogger<ProductsController> _logger;
 
-        public ProductAdditionalFieldsController(ApplicationContext context)
+        public ProductAdditionalFieldsController(
+            IProductAdditionalFieldService productAdditionalFieldService,
+            ILogger<ProductsController> logger
+            )
         {
-            _context = context;
+            _productAdditionalFieldService = productAdditionalFieldService;
+            _logger = logger;
         }
         /// <summary>
         /// Create a list of ProductAdditionalField
@@ -23,24 +27,21 @@ namespace Example.WebApi.Controllers.v1
         /// <param name="additionalFields"></param>
         /// <returns></returns>
         [HttpPost("{id}/additionalfields")]
-        public async Task<IActionResult> Post(int id, List<ProductAdditionalField> additionalFields)
+        public async Task<IActionResult> Post(int id, List<ProductAdditionalField> request)
         {
-            var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
-
-            if (product == null)
+            try
             {
-                return NotFound();
-            }
+                var response = await _productAdditionalFieldService.Post(id, request);
 
-            foreach (var field in additionalFields)
+                return Ok(await Task.FromResult(response));
+            }
+            catch (Exception ex)
             {
-                field.ProductId = id;
-                _context.ProductAdditionalFields.Add(field);
+                _logger.LogDebug($"Error occured in {nameof(Post)}. Message: {ex.Message}");
+
+                return BadRequest(ex.Message);
             }
-
-            await _context.SaveChangesAsync();
-
-            return StatusCode(201, additionalFields);
+            finally { }
         }
     }
 }

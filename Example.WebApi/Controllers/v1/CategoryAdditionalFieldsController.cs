@@ -1,7 +1,6 @@
-﻿using Example.Application.Models.Entities;
-using Example.Domain.Models;
+﻿using Example.Application.Interfaces;
+using Example.Application.Models.Entities;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Example.WebApi.Controllers.v1
 {
@@ -10,11 +9,16 @@ namespace Example.WebApi.Controllers.v1
     [ApiController]
     public class CategoryAdditionalFieldsController : ControllerBase
     {
-        private readonly ApplicationContext _context;
+        private readonly ICategoryAdditionalFieldService _categoryAdditionalFieldService;
+        private readonly ILogger<CategoryAdditionalFieldsController> _logger;
 
-        public CategoryAdditionalFieldsController(ApplicationContext context)
+        public CategoryAdditionalFieldsController(
+            ICategoryAdditionalFieldService categoryAdditionalFieldService,
+            ILogger<CategoryAdditionalFieldsController> logger
+            )
         {
-            _context = context;
+            _categoryAdditionalFieldService = categoryAdditionalFieldService;
+            _logger = logger;
         }
         /// <summary>
         /// Get a list of CategoryAdditionalFields
@@ -23,9 +27,19 @@ namespace Example.WebApi.Controllers.v1
         [HttpGet]
         public async Task<IActionResult> Get()
         {
-            var categoryAdditionalFields = await _context.CategoryAdditionalFields.ToListAsync();
+            try
+            {
+                var response = await _categoryAdditionalFieldService.Get();
 
-            return Ok(categoryAdditionalFields);
+                return Ok(await Task.FromResult(response));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"Error occured in {nameof(Get)}. Message: {ex.Message}");
+
+                return BadRequest(ex.Message);
+            }
+            finally { }
         }
         /// <summary>
         /// Create a list of CategoryAdditionalFields
@@ -34,28 +48,24 @@ namespace Example.WebApi.Controllers.v1
         /// <param name="additionalFields"></param>
         /// <returns></returns>
         [HttpPost]
-        public async Task<IActionResult> Post(int id, List<CategoryAdditionalField> additionalFields)
+        public async Task<IActionResult> Post(int id, List<CategoryAdditionalField> request)
         {
-            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id);
-
-            if (category == null)
+            try
             {
-                return NotFound();
-            }
+                var response = await _categoryAdditionalFieldService.Post(id, request);
 
-            foreach (var field in additionalFields)
+                if (response == null)
+                    return NotFound();
+
+                return Ok(await Task.FromResult(response));
+            }
+            catch (Exception ex)
             {
-                if (field.CategoryId != id)
-                {
-                    return BadRequest("Category ID mismatch in additional fields.");
-                }
+                _logger.LogDebug($"Error occured in {nameof(Post)}. Message: {ex.Message}");
 
-                _context.CategoryAdditionalFields.Add(field);
+                return BadRequest(ex.Message);
             }
-
-            await _context.SaveChangesAsync();
-
-            return StatusCode(201, additionalFields);
+            finally { }
         }
     }
 }
